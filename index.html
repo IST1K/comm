@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <script type="module" src="/@vite/client"></script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoiceStudio — Студийное клонирование и синтез голоса</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"Fira Code"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #030712; color: #f3f4f6; }
+    .waveform-bar { transition: height 0.1s ease; }
+    .guest-only { display: none; }
+    body.guest-mode .guest-only { display: block; }
+    body.guest-mode .guest-hide { display: none !important; }
+  </style>
+<script src="/_aistudio-iframe.js?v=1f94f900"></script></head>
+<body class="min-h-screen flex flex-col font-sans selection:bg-purple-600 selection:text-white">
+
+  <!-- Шапка -->
+  <header class="border-b border-gray-800 bg-gray-950/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center text-white shadow-lg shadow-purple-500/20">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+        </div>
+        <div>
+          <h1 class="text-base font-bold text-white tracking-tight">VoiceStudio <span class="text-purple-400">OmniVoice</span></h1>
+          <p class="text-xs text-gray-400">Клонирование своего голоса и генерация речи на GPU</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 text-xs bg-gray-900 border border-gray-800 px-3 py-1.5 rounded-full text-gray-300">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span>Видеокарта активна</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Основной контейнер -->
+  <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-8">
+
+    <!-- ЭТАП 1: ФОРМА ЗАКАЗА -->
+    <div id="step-form" class="space-y-6">
+
+      <!-- ПОИСК ЗАКАЗА ПО НОМЕРУ (если страницу обновили или закрыли) -->
+      <div class="flex flex-wrap items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl px-4 py-3">
+        <span class="text-xs text-gray-400">🔎 Уже заказывали? Введите номер заказа:</span>
+        <input id="find-order-input" type="text" maxlength="20" placeholder="ord_1a2b3c4d" autocomplete="off"
+          class="flex-1 min-w-[150px] bg-gray-950 border border-gray-700 focus:border-purple-500 rounded-lg px-3 py-1.5 text-xs font-mono text-white outline-none">
+        <button type="button" onclick="findOrder()"
+          class="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-colors">Найти</button>
+        <div id="find-order-msg" class="hidden w-full text-xs text-red-400"></div>
+      </div>
+      <!-- Баннер условий -->
+      <div class="bg-gradient-to-r from-purple-950/40 via-gray-900 to-gray-900 border border-purple-800/40 rounded-2xl p-5 shadow-xl flex flex-wrap items-center justify-between gap-4">
+        <div class="space-y-1">
+          <div class="text-xs font-semibold text-purple-400 uppercase tracking-wider">Без регистрации и подписок</div>
+          <h2 class="text-lg font-bold text-white">Клонируйте свой голос или создайте новый по описанию</h2>
+          <p class="text-xs text-gray-400">Лимит: <b id="limit-text">до 350 символов с пробелами</b> в одном заказе для защиты видеокарты.</p>
+        </div>
+        <div id="price-box" class="guest-hide bg-purple-900/30 border border-purple-500/30 px-4 py-2.5 rounded-xl text-center">
+          <div class="text-xs text-purple-300">Стоимость озвучки</div>
+          <div class="text-xl font-extrabold text-white">20 ₽</div>
+        </div>
+      </div>
+
+      <!-- Переключатель: бесплатно / платно -->
+      <div id="access-switch" class="hidden grid grid-cols-2 gap-3">
+        <button type="button" id="access-free-btn" onclick="setAccess('free')" class="access-btn p-3 rounded-xl border border-gray-800 bg-gray-950 text-left transition-all">
+          <div class="text-sm font-bold text-white">Бесплатно</div>
+          <div id="access-free-desc" class="text-[11px] text-gray-400 mt-0.5">200 символов, 3 раза в час</div>
+        </button>
+        <button type="button" id="access-paid-btn" onclick="setAccess('paid')" class="access-btn p-3 rounded-xl border border-gray-800 bg-gray-950 text-left transition-all">
+          <div class="text-sm font-bold text-white">Платно <span class="text-purple-400">20 ₽</span></div>
+          <div id="access-paid-desc" class="text-[11px] text-gray-400 mt-0.5">350 символов, второе место в очереди</div>
+        </button>
+      </div>
+
+      <!-- Гостевой блок: остаток генераций -->
+      <div id="guest-banner" class="guest-only bg-emerald-950/30 border border-emerald-800/50 rounded-2xl p-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div id="guest-banner-label" class="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Бесплатный доступ для друзей</div>
+            <div id="guest-quota-text" class="text-sm font-bold text-white mt-1">Загрузка...</div>
+          </div>
+          <div id="guest-quota-timer" class="text-xs text-emerald-300"></div>
+        </div>
+        <p id="guest-quota-note" class="text-[11px] text-gray-400 mt-2">Каждая использованная генерация возвращается через 60 минут.</p>
+      </div>
+
+      <div id="queue-info" class="hidden"></div>
+
+      <!-- ВЫБОР РЕЖИМА ГОЛОСА (ТАБЫ) -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl space-y-5">
+        <div>
+          <label class="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-3">
+            1. Выберите способ озвучки:
+          </label>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <!-- Таб 1: Клонирование голоса -->
+            <button type="button" id="tab-btn-clone" onclick="switchMode('clone')" 
+              class="mode-tab flex flex-col items-start p-4 rounded-xl border border-purple-500 bg-purple-950/30 text-left transition-all">
+              <span class="text-lg mb-1">🧬</span>
+              <span class="text-sm font-bold text-white">Клонировать свой голос</span>
+              <span class="text-xs text-purple-300 mt-1">ГС или аудио 5–30 сек</span>
+            </button>
+
+            <!-- Таб 2: Создать по описанию -->
+            <button type="button" id="tab-btn-design" onclick="switchMode('design')" 
+              class="mode-tab flex flex-col items-start p-4 rounded-xl border border-gray-800 bg-gray-950 hover:border-gray-700 text-left transition-all">
+              <span class="text-lg mb-1">✨</span>
+              <span class="text-sm font-bold text-gray-200">Создать по описанию</span>
+              <span class="text-xs text-gray-400 mt-1">Voice Design (промпт)</span>
+            </button>
+
+            <!-- Таб 3: Демо-голос -->
+            <button type="button" id="tab-btn-standard" onclick="switchMode('standard')" 
+              class="mode-tab flex flex-col items-start p-4 rounded-xl border border-gray-800 bg-gray-950 hover:border-gray-700 text-left transition-all">
+              <span class="text-lg mb-1">🎙️</span>
+              <span class="text-sm font-bold text-gray-200">VoiceStudio Demo</span>
+              <span class="text-xs text-gray-400 mt-1">Готовый студийный голос</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ПАНЕЛЬ РЕЖИМА 1: КЛОНИРОВАНИЕ СВОЕГО ГОЛОСА -->
+        <div id="panel-clone" class="space-y-4 pt-2 border-t border-gray-800/80">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span>Загрузите эталон вашего голоса</span>
+                <span class="text-xs font-normal text-purple-400 bg-purple-950/60 border border-purple-800 px-2 py-0.5 rounded-full">5–30 секунд чистой речи</span>
+              </h3>
+              <p class="text-xs text-gray-400 mt-0.5">Отправьте голосовое сообщение или запишите с микрофона прямо сейчас</p>
+            </div>
+          </div>
+
+          <!-- Способ ввода аудио: Загрузка или Запись -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <!-- Дропзона файла -->
+            <div id="audio-dropzone" class="border-2 border-dashed border-gray-700 hover:border-purple-500 rounded-xl p-5 text-center cursor-pointer bg-gray-950 transition-colors">
+              <input type="file" id="ref-audio-input" accept="audio/*,.mp3,.wav,.ogg,.m4a,.webm" class="hidden">
+              <div class="space-y-1.5">
+                <div class="text-2xl">📁</div>
+                <div class="text-xs font-semibold text-gray-200">Нажмите или перетащите аудиофайл</div>
+                <div class="text-[11px] text-gray-500">MP3, WAV, M4A, OGG, WEBM (до 10 МБ)</div>
+              </div>
+            </div>
+
+            <!-- Запись с микрофона в браузере -->
+            <div class="border border-gray-800 rounded-xl p-5 flex flex-col items-center justify-center bg-gray-950 text-center space-y-2">
+              <button type="button" id="record-btn" onclick="toggleAudioRecording()" 
+                class="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600/20 text-red-400 border border-red-500/40 hover:bg-red-600/30 text-xs font-bold transition-all">
+                <span id="record-dot" class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                <span id="record-btn-text">Записать голос с микрофона</span>
+              </button>
+              <div id="record-timer" class="text-xs font-mono text-gray-400">Длительность: <span id="record-sec">0</span> сек (нужно от 5 до 30)</div>
+            </div>
+          </div>
+
+          <!-- Выбранное аудио превью -->
+          <div id="audio-preview-box" class="hidden bg-gray-950 border border-purple-500/40 rounded-xl p-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-purple-600/20 text-purple-400 flex items-center justify-center text-sm">🎵</div>
+              <div>
+                <div id="audio-preview-name" class="text-xs font-semibold text-white">голос.mp3</div>
+                <div class="text-[11px] text-gray-400">Готово для клонирования голоса</div>
+              </div>
+            </div>
+            <audio id="audio-player-preview" controls class="h-8 max-w-[200px]"></audio>
+            <button type="button" onclick="removeSelectedAudio()" class="text-gray-400 hover:text-red-400 text-xs px-2">Удалить</button>
+          </div>
+
+          <!-- Опциональная расшифровка речи -->
+          <div>
+            <label class="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">
+              Что сказано в аудио (стенограмма, необязательно):
+            </label>
+            <input type="text" id="ref-transcript" placeholder="Например: Привет, это образец моего голоса..." 
+              class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-500">
+          </div>
+        </div>
+
+        <!-- ПАНЕЛЬ РЕЖИМА 2: СОЗДАНИЕ ГОЛОСА ПО ОПИСАНИЮ (VOICE DESIGN) -->
+        <div id="panel-design" class="hidden space-y-4 pt-2 border-t border-gray-800/80">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span>Голосовой дизайн OmniVoice</span>
+                <span class="text-[11px] font-normal text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded-full">100% совместимо</span>
+              </h3>
+              <p class="text-xs text-gray-400 mt-0.5">Выберите готовый стиль или настройте параметры: пол, возраст, тон, манеру речи</p>
+            </div>
+          </div>
+
+          <!-- Готовые пресеты (быстрый клик) -->
+          <div>
+            <label class="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+              Готовые популярные пресеты:
+            </label>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <button type="button" onclick="applyPreset('female, teenager, whisper')" data-preset="female, teenager, whisper"
+                class="preset-card p-2.5 rounded-xl border border-gray-800 bg-gray-950 hover:border-purple-500 hover:bg-purple-950/20 text-left transition-all group">
+                <div class="text-xs font-bold text-white">🌸 Нежный подросток</div>
+                <div class="text-[10px] text-gray-500 group-hover:text-purple-300">female, teenager, whisper</div>
+              </button>
+              <button type="button" onclick="applyPreset('female, young adult, moderate pitch')" data-preset="female, young adult, moderate pitch"
+                class="preset-card p-2.5 rounded-xl border border-gray-800 bg-gray-950 hover:border-purple-500 hover:bg-purple-950/20 text-left transition-all group">
+                <div class="text-xs font-bold text-white">👩 Молодая девушка</div>
+                <div class="text-[10px] text-gray-500 group-hover:text-purple-300">female, young adult</div>
+              </button>
+              <button type="button" onclick="applyPreset('male, low pitch')" data-preset="male, low pitch"
+                class="preset-card p-2.5 rounded-xl border border-gray-800 bg-gray-950 hover:border-purple-500 hover:bg-purple-950/20 text-left transition-all group">
+                <div class="text-xs font-bold text-white">🎙️ Мужской бас</div>
+                <div class="text-[10px] text-gray-500 group-hover:text-purple-300">male, low pitch</div>
+              </button>
+              <button type="button" onclick="applyPreset('child, high pitch')" data-preset="child, high pitch"
+                class="preset-card p-2.5 rounded-xl border border-gray-800 bg-gray-950 hover:border-purple-500 hover:bg-purple-950/20 text-left transition-all group">
+                <div class="text-xs font-bold text-white">👧 Звонкий детский</div>
+                <div class="text-[10px] text-gray-500 group-hover:text-purple-300">child, high pitch</div>
+              </button>
+              <button type="button" onclick="applyPreset('male, elderly, low pitch')" data-preset="male, elderly, low pitch"
+                class="preset-card p-2.5 rounded-xl border border-gray-800 bg-gray-950 hover:border-purple-500 hover:bg-purple-950/20 text-left transition-all group">
+                <div class="text-xs font-bold text-white">🧙‍♂️ Мудрый старец</div>
+                <div class="text-[10px] text-gray-500 group-hover:text-purple-300">male, elderly, low pitch</div>
+              </button>
+              <button type="button" onclick="applyPreset('whisper')" data-preset="whisper"
+                class="preset-card p-2.5 rounded-xl border border-gray-800 bg-gray-950 hover:border-purple-500 hover:bg-purple-950/20 text-left transition-all group">
+                <div class="text-xs font-bold text-white">🤫 Таинственный шёпот</div>
+                <div class="text-[10px] text-gray-500 group-hover:text-purple-300">whisper</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Конструктор параметров OmniVoice -->
+          <div class="p-3.5 bg-gray-950 border border-gray-800/90 rounded-xl space-y-3">
+            <div class="text-[11px] font-semibold text-gray-300 uppercase tracking-wider flex items-center justify-between">
+              <span>Конструктор параметров:</span>
+              <span id="instruct-preview" class="font-mono text-purple-400 normal-case bg-purple-950/40 border border-purple-800/60 px-2 py-0.5 rounded text-[11px]">female, teenager, whisper</span>
+            </div>
+
+            <!-- Пол -->
+            <div class="flex items-center gap-2 text-xs">
+              <span class="text-gray-400 w-16 text-[11px]">Пол:</span>
+              <div class="flex flex-wrap gap-1.5" id="group-gender">
+                <button type="button" onclick="selectParam('gender', 'female')" data-val="female" class="param-btn px-2.5 py-1 rounded-lg text-xs bg-purple-600/30 text-purple-300 border border-purple-500">👩 Женский</button>
+                <button type="button" onclick="selectParam('gender', 'male')" data-val="male" class="param-btn px-2.5 py-1 rounded-lg text-xs bg-gray-900 text-gray-300 border border-gray-800 hover:border-gray-700">👨 Мужской</button>
+              </div>
+            </div>
+
+            <!-- Возраст -->
+            <div class="flex items-center gap-2 text-xs">
+              <span class="text-gray-400 w-16 text-[11px]">Возраст:</span>
+              <div class="flex flex-wrap gap-1.5" id="group-age">
+                <button type="button" onclick="selectParam('age', 'child')" data-val="child" class="param-btn px-2 py-1 rounded-lg text-xs bg-gray-900 text-gray-300 border border-gray-800 hover:border-gray-700">Ребёнок</button>
+                <button type="button" onclick="selectParam('age', 'teenager')" data-val="teenager" class="param-btn px-2 py-1 rounded-lg text-xs bg-purple-600/30 text-purple-300 border border-purple-500">Подросток</button>
+                <button type="button" onclick="selectParam('age', 'young adult')" data-val="young adult" class="param-btn px-2 py-1 rounded-lg text-xs bg-gray-900 text-gray-300 border border-gray-800 hover:border-gray-700">Молодой</button>
+                <button type="button" onclick="selectParam('age', 'middle-aged')" data-val="middle-aged" class="param-btn px-2 py-1 rounded-lg text-xs bg-gray-900 text-gray-300 border border-gray-800 hover:border-gray-700">Зрелый</button>
+                <button type="button" onclick="selectParam('age', 'elderly')" data-val="elderly" class="param-btn px-2 py-1 rounded-lg text-xs bg-gray-900 text-gray-300 border border-gray-800 hover:border-gray-700">Пожилой</button>
+              </div>
+            </div>
+
+            <!-- Тон речи -->
+            <div class="flex items-center gap-2 text-xs">
+              <span class="text-gray-400 w-16 text-[11px]">Тон:</span>
+              <div class="flex flex-wrap gap-1.5" id="group-pitch">
+                <button type="button" onclick="selectParam('pitch', '')" data-val="" class="param-btn px-2 py-1 rounded-lg text-xs bg-purple-600/30 text-purple-300 border border-purple-500">Обычный</button>
+                <button type="button" onclick="selectParam('pitch', 'high pitch')" data-val="high pitch" class="param-btn px-2 py-1 rounded-lg text-xs bg-gray-900 text-gray-300 border border-gray-800 hover:border-gray-700">Высокий</button>
+                <button type="button" onclick="selectParam('pitch', 'low pitch')" data-val="low pitch" class="param-btn px-2 py-1 rounded-lg text-xs bg-gray-900 text-gray-300 border border-gray-800 hover:border-gray-700">Низкий (бас)</button>
+              </div>
+            </div>
+
+            <!-- Манера / Шёпот -->
+            <div class="flex items-center gap-2 text-xs">
+              <span class="text-gray-400 w-16 text-[11px]">Манера:</span>
+              <div class="flex flex-wrap gap-1.5" id="group-style">
+                <button type="button" onclick="selectParam('style', 'whisper')" data-val="whisper" class="param-btn px-2 py-1 rounded-lg text-xs bg-purple-600/30 text-purple-300 border border-purple-500">🤫 Нежный шёпот (whisper)</button>
+                <button type="button" onclick="selectParam('style', '')" data-val="" class="param-btn px-2 py-1 rounded-lg text-xs bg-gray-900 text-gray-300 border border-gray-800 hover:border-gray-700">Обычная речь</button>
+              </div>
+            </div>
+
+            <!-- Акцент (опционально) -->
+            <div class="flex items-center gap-2 text-xs">
+              <span class="text-gray-400 w-16 text-[11px]">Акцент:</span>
+              <div class="flex flex-wrap gap-1.5" id="group-accent">
+                <button type="button" onclick="selectParam('accent', '')" data-val="" class="param-btn px-2 py-1 rounded-lg text-xs bg-purple-600/30 text-purple-300 border border-purple-500">Без акцента</button>
+                <button type="button" onclick="selectParam('accent', 'russian accent')" data-val="russian accent" class="param-btn px-2 py-1 rounded-lg text-xs bg-gray-900 text-gray-300 border border-gray-800 hover:border-gray-700">Русский</button>
+                <button type="button" onclick="selectParam('accent', 'british accent')" data-val="british accent" class="param-btn px-2 py-1 rounded-lg text-xs bg-gray-900 text-gray-300 border border-gray-800 hover:border-gray-700">Британский</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Скрытое / редактируемое поле описания -->
+          <div>
+            <label class="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">
+              Итоговый параметр для VoiceStudio:
+            </label>
+            <input type="text" id="design-prompt" oninput="onDesignPromptInput()" value="female, teenager, whisper"
+              placeholder="female, teenager, whisper или свободный текст на русском"
+              class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-100 placeholder-gray-600 focus:outline-none focus:border-purple-500 font-mono">
+            <p class="text-[11px] text-gray-500 mt-1">
+              ✨ Подсказка: свободный текст на русском автоматически очищается и преобразуется под белый список OmniVoice, устраняя ошибку 500. Акцент работает в основном для английского текста.
+            </p>
+          </div>
+        </div>
+
+        <!-- ПАНЕЛЬ РЕЖИМА 3: ДЕМО ГОЛОС -->
+        <div id="panel-standard" class="hidden space-y-2 pt-2 border-t border-gray-800/80">
+          <div class="p-3 bg-gray-950 border border-gray-800 rounded-xl flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-purple-600/20 text-purple-400 flex items-center justify-center text-sm">🎙️</div>
+              <div>
+                <div class="text-xs font-bold text-white">VoiceStudio Demo Voice</div>
+                <div class="text-[11px] text-gray-400">Стандартный сбалансированный голос для чтения текстов</div>
+              </div>
+            </div>
+            <span class="text-xs text-purple-400 bg-purple-950/60 border border-purple-800 px-2.5 py-1 rounded-md">Выбран по умолчанию</span>
+          </div>
+        </div>
+
+        <!-- ПОЛЕ ВВОДА ТЕКСТА ДЛЯ ОЗВУЧКИ -->
+        <div class="pt-2 border-t border-gray-800/80">
+          <label class="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
+            2. Введите текст, который нужно озвучить:
+          </label>
+          <div class="relative">
+            <textarea id="text-input" rows="6" maxlength="350" placeholder="Вставьте текст, который должен произнести сгенерированный или клонированный голос..." 
+              class="w-full bg-gray-950 border border-gray-800 rounded-xl p-4 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors leading-relaxed"></textarea>
+            
+            <div id="char-badge" class="absolute bottom-3 right-3 text-xs font-mono px-2.5 py-1 rounded-md bg-gray-800 text-gray-400 border border-gray-700">
+              <span id="char-count">0</span> / 350 знаков с пробелами
+            </div>
+          </div>
+          <p id="char-error" class="text-xs text-red-400 font-medium mt-1.5 hidden flex items-center gap-1">
+            ⚠️ Текст превышает лимит в 350 символов с пробелами. Пожалуйста, сократите текст для защиты видеокарты.
+          </p>
+        </div>
+      </div>
+
+      <!-- КАРТОЧКА ОПЛАТЫ И ОТПРАВКИ -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl space-y-5">
+        <div>
+          <label id="payment-label" class="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
+            3. Оплата и отправка заказа:
+          </label>
+          <div id="payment-block" class="guest-hide bg-gray-950 border border-gray-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+            <div class="space-y-1">
+              <div class="text-xs text-gray-400">Перевод на карту <b class="text-white">СберБанк</b>:</div>
+              <div class="flex items-center gap-2">
+                <span id="card-display" class="font-mono text-sm sm:text-base font-bold text-yellow-400 tracking-wider">2200 7000 0000 0000</span>
+                <button type="button" onclick="copyCard()" class="px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-700 transition-colors">
+                  Копировать
+                </button>
+              </div>
+              <div class="text-xs text-gray-400">Получатель: <span id="recipient-display" class="text-gray-200 font-medium">Руслан К.</span> • Сумма: <b class="text-purple-400">20 ₽</b></div>
+            </div>
+            <div class="text-right">
+              <span class="inline-block text-[11px] text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 px-2.5 py-1 rounded-md font-medium">
+                Чек не обязателен
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Опциональная загрузка чека -->
+        <div id="receipt-block" class="guest-hide space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-gray-300">Скриншот или фото чека (по желанию):</span>
+            <span class="text-[11px] text-gray-500">Ускоряет подтверждение администратором</span>
+          </div>
+          <div id="receipt-dropzone" class="border border-dashed border-gray-700 hover:border-gray-500 rounded-xl p-3 text-center cursor-pointer bg-gray-950/60 transition-colors flex items-center justify-center gap-3">
+            <input type="file" id="receipt-input" accept="image/*,.png,.jpg,.jpeg,.webp" class="hidden">
+            <span class="text-lg">🧾</span>
+            <span id="receipt-filename" class="text-xs text-gray-400">Нажмите, чтобы прикрепить чек (PNG, JPG)</span>
+            <button type="button" id="remove-receipt-btn" onclick="removeReceipt(event)" class="hidden text-xs text-red-400 hover:underline">Удалить</button>
+          </div>
+        </div>
+
+        <!-- Кнопка отправки -->
+        <div class="pt-2">
+          <button id="submit-btn" onclick="submitOrder()" 
+            class="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-sm shadow-lg shadow-purple-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+            <span id="submit-btn-text">Отправить заказ на проверку (20 ₽)</span>
+            <svg id="submit-spinner" class="w-4 h-4 animate-spin hidden" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+          </button>
+          <p id="submit-note" class="text-[11px] text-gray-500 text-center mt-2">
+            Администратор подтвердит получение перевода, и задача сразу пойдет в синтез на GPU.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ЭТАП 2: ЭКРАН СТАТУСА И РЕЗУЛЬТАТА (ОЖИДАНИЕ / ОЧЕРЕДЬ / ГОТОВО) -->
+    <div id="step-status" class="hidden space-y-6">
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl space-y-6">
+        
+        <!-- Выход с экрана заказа (доступен всегда) -->
+        <button type="button" onclick="leaveOrder()"
+          class="text-xs font-semibold text-gray-300 hover:text-white bg-gray-950 hover:bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 transition-colors">
+          ← Создать новый заказ
+        </button>
+
+        <!-- Верхний заголовок статуса -->
+        <div class="flex items-center justify-between border-b border-gray-800 pb-4">
+          <div>
+            <div class="text-xs text-gray-400">Номер заказа:</div>
+            <div id="order-id-display" class="font-mono text-sm font-bold text-purple-400">ord_...</div>
+            <div class="text-[11px] text-gray-500 mt-0.5">Заказ открывается только в этом браузере</div>
+          </div>
+          <div id="status-pill" class="text-xs font-bold px-3 py-1.5 rounded-full bg-yellow-950 text-yellow-400 border border-yellow-700/50 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-yellow-400 animate-ping"></span>
+            <span id="status-text">Ожидает подтверждения администратором</span>
+          </div>
+        </div>
+
+        <!-- Индикатор прогресса -->
+        <div class="space-y-2">
+          <div class="flex justify-between text-xs text-gray-400">
+            <span>Прогресс</span>
+            <span id="progress-percent">25%</span>
+          </div>
+          <div class="w-full bg-gray-950 rounded-full h-2.5 overflow-hidden border border-gray-800">
+            <div id="progress-bar" class="bg-gradient-to-r from-purple-600 to-pink-500 h-2.5 rounded-full transition-all duration-500" style="width: 25%"></div>
+          </div>
+        </div>
+
+        <!-- Подробное описание статуса -->
+        <div id="status-details-box" class="bg-gray-950 border border-gray-800 rounded-xl p-4 text-xs text-gray-300 space-y-2">
+          <div class="font-semibold text-white flex items-center gap-2">
+            <span id="status-icon">⏳</span>
+            <span id="status-title">Заказ передан на проверку</span>
+          </div>
+          <p id="status-desc" class="text-gray-400 leading-relaxed">
+            Администратор проверяет факт перевода 20 ₽ на карту СберБанка. Это занимает обычно от 1 до 5 минут. Пожалуйста, не закрывайте вкладку.
+          </p>
+        </div>
+
+        <!-- Мини-игры на время ожидания (скрипт games.js) -->
+        <div id="game-panel" class="hidden"></div>
+
+        <!-- Окно загруженного чека если клиент хочет догрузить чек позже -->
+        <div id="add-receipt-box" class="p-4 bg-gray-950 border border-gray-800 rounded-xl flex items-center justify-between">
+          <div class="text-xs text-gray-300">
+            <span>Не прикрепили чек при оформлении?</span>
+            <div class="text-[11px] text-gray-500">Вы можете прикрепить скриншот чека сейчас</div>
+          </div>
+          <label class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-xs font-semibold text-white rounded-lg cursor-pointer transition-colors">
+            Прикрепить чек
+            <input type="file" id="late-receipt-input" accept="image/*" class="hidden" onchange="uploadLateReceipt(event)">
+          </label>
+        </div>
+
+        <!-- ПОМОЩЬ: показывается при ошибке, отклонении или истёкшем сроке -->
+        <div id="status-support-box" class="hidden flex items-center justify-between gap-3 bg-gray-950 border border-gray-800 rounded-xl p-4">
+          <span class="text-xs text-gray-300">Что-то пошло не так? Напишите нам — разберёмся и поможем.</span>
+          <button type="button" onclick="openSupport()"
+            class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold whitespace-nowrap transition-colors">💬 Написать в поддержку</button>
+        </div>
+
+        <!-- БЛОК ГОТОВОГО АУДИО (ПОКАЗЫВАЕТСЯ ПРИ СТАТУСЕ COMPLETED) -->
+        <div id="result-box" class="hidden bg-gradient-to-b from-purple-950/30 to-gray-950 border border-purple-500/50 rounded-2xl p-6 space-y-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl">🎉</div>
+            <div>
+              <h3 class="text-sm font-bold text-white">Озвучка успешно сгенерирована!</h3>
+              <p class="text-xs text-gray-400">Синтез выполнен на локальной видеокарте VoiceStudio</p>
+              <p id="game-summary" class="hidden text-xs text-purple-300 mt-1"></p>
+            </div>
+          </div>
+
+          <!-- Аудиоплеер -->
+          <div class="bg-gray-950 p-4 rounded-xl border border-gray-800">
+            <audio id="result-audio" controls class="w-full"></audio>
+          </div>
+
+          <!-- Таймер хранения файла -->
+          <div id="expires-note" class="text-xs text-yellow-200 bg-yellow-950/30 border border-yellow-800/40 rounded-lg px-3 py-2">
+            ⏳ Файл хранится ещё <b id="expires-timer" class="font-mono">--:--</b> и затем удаляется с сервера — скачайте его.
+            Номер заказа сохранён: если обновите страницу, введите его в поле поиска.
+          </div>
+
+          <!-- Кнопки действий -->
+          <div class="flex flex-wrap gap-3">
+            <a id="download-audio-btn" href="#" download="voicestudio_speech.wav" 
+              class="flex-1 py-3 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs text-center transition-colors flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              <span>Скачать аудио</span>
+            </a>
+            <button type="button" onclick="resetToNewOrder()" 
+              class="py-3 px-4 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold text-xs transition-colors">
+              Озвучить еще текст
+            </button>
+          </div>
+        </div>
+
+        <!-- БЛОК ОТКЛОНЕНИЯ (REJECTED) -->
+        <div id="rejected-box" class="hidden bg-red-950/20 border border-red-500/40 rounded-xl p-4 text-xs text-red-300 space-y-2">
+          <div class="font-bold text-red-200">❌ Заказ был отклонен администратором</div>
+          <p id="rejection-reason-text" class="text-gray-300">Причина: Перевод не обнаружен или текст не соответствует правилам.</p>
+          <button type="button" onclick="resetToNewOrder()" class="mt-2 px-3 py-1.5 bg-gray-800 text-white rounded-lg text-xs hover:bg-gray-700">
+            Оформить заново
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Подвал -->
+  <footer class="border-t border-gray-800 py-6 text-center text-xs text-gray-500">
+    <p>VoiceStudio OmniVoice Service • Синтез речи на выделенном GPU • Лимит 350 символов</p>
+  </footer>
+
+  <script src="/static/games.js"></script>
+  <script src="/static/app.js"></script>
+  <script src="/static/support.js"></script>
+</body>
+</html>
