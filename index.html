@@ -3,115 +3,185 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex">
-<title>VoiceStudio</title>
+<title>VoiceStudio — Профессиональная нейро-озвучка и клонирование голоса</title>
+<meta name="description" content="VoiceStudio: реалистичный синтез речи, мгновенное клонирование голоса по короткому аудио и создание эдитов для TikTok, Shorts и Reels.">
 <style>
-	:root { color-scheme: dark; }
-	* { box-sizing: border-box; }
-	body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
-		background: #030712; color: #e5e7eb; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-	.card { width: 100%; max-width: 520px; background: #111827; border: 1px solid #1f2937; border-radius: 18px; padding: 28px; }
-	h1 { margin: 0 0 6px; font-size: 22px; color: #fff; }
-	.sub { margin: 0 0 18px; color: #9ca3af; font-size: 14px; }
-	.status { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: #0b1220; border: 1px solid #1f2937; font-size: 14px; }
-	.dot { width: 10px; height: 10px; border-radius: 50%; background: #6b7280; flex: none; }
-	.dot.on { background: #34d399; }
-	.dot.off { background: #f87171; }
-	.dot.wait { background: #fbbf24; animation: pulse 1s infinite; }
-	@keyframes pulse { 50% { opacity: .3; } }
-	p { line-height: 1.55; font-size: 14px; color: #d1d5db; }
-	.schedule { margin: 16px 0; padding: 12px 14px; border-radius: 12px; background: #1e1b4b55; border: 1px solid #4c1d9566; font-size: 14px; }
-	.schedule b { color: #c4b5fd; }
-	.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
-	a.btn { display: inline-block; padding: 10px 16px; border-radius: 12px; font-size: 14px; font-weight: 600; text-decoration: none; }
-	a.primary { background: #7c3aed; color: #fff; }
-	a.primary:hover { background: #6d28d9; }
-	a.ghost { background: #1f2937; color: #e5e7eb; }
-	a.ghost:hover { background: #374151; }
-	.small { margin-top: 16px; font-size: 12px; color: #6b7280; }
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #030712 60%);
+    color: #e5e7eb; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: 24px 16px; display: flex; flex-direction: column; align-items: center;
+  }
+  .container { width: 100%; max-width: 760px; margin: 0 auto; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px;
+    background: rgba(124, 58, 237, 0.15); border: 1px solid rgba(167, 139, 250, 0.3);
+    border-radius: 9999px; font-size: 13px; color: #c4b5fd; margin-bottom: 16px;
+  }
+  .hero { text-align: center; padding: 24px 0 32px; }
+  h1 { font-size: clamp(28px, 6vw, 42px); margin: 0 0 14px; color: #fff; line-height: 1.2; font-weight: 800; }
+  h1 span { background: linear-gradient(135deg, #a78bfa, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .lead { font-size: clamp(15px, 2.5vw, 17px); color: #9ca3af; margin: 0 auto; max-width: 580px; line-height: 1.6; }
+  
+  .status-box {
+    background: #0f172a; border: 1px solid #1e293b; border-radius: 16px;
+    padding: 16px 20px; margin: 24px 0 32px; display: flex; align-items: center;
+    justify-content: space-between; gap: 16px; flex-wrap: wrap; box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  }
+  .status-info { display: flex; align-items: center; gap: 12px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: #6b7280; flex: none; }
+  .dot.on { background: #34d399; box-shadow: 0 0 12px #34d399; }
+  .dot.off { background: #f87171; }
+  .dot.wait { background: #fbbf24; animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .4; } }
+  .status-title { font-weight: 600; font-size: 15px; color: #fff; margin-bottom: 2px; }
+  .status-sub { font-size: 13px; color: #94a3b8; }
+  
+  .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+  a.btn {
+    display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px;
+    border-radius: 10px; font-size: 14px; font-weight: 600; text-decoration: none; transition: 0.2s;
+  }
+  a.btn-primary { background: #7c3aed; color: #fff; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.4); }
+  a.btn-primary:hover { background: #6d28d9; transform: translateY(-1px); }
+  a.btn-ghost { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; }
+  a.btn-ghost:hover { background: #334155; }
+  
+  .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .feature-card {
+    background: #111827; border: 1px solid #1f2937; border-radius: 14px; padding: 20px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .feature-card .icon { font-size: 24px; margin-bottom: 4px; }
+  .feature-card h3 { margin: 0; font-size: 16px; color: #f3f4f6; }
+  .feature-card p { margin: 0; font-size: 13px; color: #9ca3af; line-height: 1.5; }
+  
+  .order-card {
+    background: linear-gradient(145deg, #18181b, #09090b); border: 1px solid #27272a;
+    border-radius: 18px; padding: 26px; text-align: center; margin-bottom: 32px;
+  }
+  .order-card h2 { margin: 0 0 10px; font-size: 20px; color: #fff; }
+  .order-card p { margin: 0 0 18px; color: #a1a1aa; font-size: 14px; line-height: 1.6; }
+  
+  .schedule {
+    font-size: 13px; color: #94a3b8; background: #0f172a; border-radius: 10px;
+    padding: 12px; margin-top: 14px; border: 1px dashed #334155;
+  }
+  .schedule b { color: #cbd5e1; }
+  footer { margin-top: auto; padding: 20px 0; text-align: center; font-size: 12px; color: #64748b; }
 </style>
 </head>
 <body>
-<div class="card">
-	<h1>VoiceStudio</h1>
-	<p class="sub">Озвучка текста и клонирование голоса</p>
 
-	<div class="status"><span id="dot" class="dot wait"></span><span id="status-text">Проверяю, работает ли сервер...</span></div>
+<div class="container">
+  <div class="hero">
+    <div class="badge">🎙️ VoiceStudio AI — Нейросети нового поколения</div>
+    <h1>Озвучка и клонирование голоса <span>с живыми эмоциями</span></h1>
+    <p class="lead">Синтезируйте идеальный дубляж, создавайте уникальные голоса персонажей и трендовые эдиты для Shorts, Reels и TikTok всего за пару кликов.</p>
+  </div>
 
-	<div id="offline-block" hidden>
-		<p style="margin-top:18px"><b style="color:#fff">Сайт временно недоступен.</b><br>
-		Привет! Мой сервер сейчас отдыхает.</p>
-		<div class="schedule">График работы: <b>с 10:00 до 23:00 по Иркутскому времени</b>.<br>
-			<span id="irkutsk-note"></span></div>
-		<p>Если сейчас это время, а сайт не работает, напиши мне в Telegram: <b>@now_know223</b>. Я запущу сервер вручную.<br>Спасибо за понимание!</p>
-	</div>
+  <div class="status-box">
+    <div class="status-info">
+      <span id="dot" class="dot wait"></span>
+      <div>
+        <div class="status-title" id="status-text">Проверка доступности онлайн-студии...</div>
+        <div class="status-sub" id="status-hint">Обычно студия доступна по расписанию</div>
+      </div>
+    </div>
+    <div class="btn-group">
+      <a class="btn btn-primary" id="open-link" href="#">Войти в Студию</a>
+      <a class="btn btn-ghost" href="https://t.me/now_know223" target="_blank" rel="noopener">Заказать в TG</a>
+    </div>
+  </div>
 
-	<div class="actions">
-		<a class="btn primary" id="open-link" href="#">Открыть сайт</a>
-		<a class="btn ghost" href="https://t.me/now_know223" target="_blank" rel="noopener">Написать в Telegram</a>
-	</div>
-	<p class="small">Страницу можно не закрывать: она сама проверяет сервер каждые 15 секунд и откроет сайт, когда он включится.</p>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="icon">⚡</div>
+      <h3>Клонирование голоса</h3>
+      <p>Загрузите 5-10 секунд аудио или запишите голос прямо в микрофон — нейросеть заговорит точно вашим тембром.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🎭</div>
+      <h3>Voice Design</h3>
+      <p>Генерация уникальных голосов по текстовому описанию: пол, возраст, акцент, хрипота или интонации.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🎬</div>
+      <h3>Готово для эдитов</h3>
+      <p>Идеально подходит для озвучки вирусных роликов, мемов, стримов и видеороликов в CapCut.</p>
+    </div>
+  </div>
+
+  <div class="order-card">
+    <h2>Нужна озвучка прямо сейчас или проект под ключ?</h2>
+    <p>Если веб-сервер сейчас выключен или вам требуется пакетная озвучка эдита/ролика с тонкой настройкой пауз и субтитрами — напишите мне напрямую в Telegram!</p>
+    <a class="btn btn-primary" href="https://t.me/now_know223" target="_blank" rel="noopener" style="padding: 12px 24px; font-size: 15px;">👉 Написать в Telegram: @now_know223</a>
+    <div class="schedule">
+      🕒 График работы домашнего сервера: <b>с 10:00 до 23:00 (по Иркутскому времени)</b>.<br>
+      Если сервер спит в рабочее время — черканите в TG, включу за 2 минуты!
+    </div>
+  </div>
+
+  <footer>
+    VoiceStudio © 2025. Разработано IST1K.
+  </footer>
 </div>
 
 <script>
-	// Адрес сайта через туннель. Эта страница лежит на обычном хостинге и работает, даже когда сервер выключен
-	var SITE = "https://misty-yak-1997.a.tuna.free";
-	var CHECK_EVERY_MS = 15000;
-	var PROBE_TIMEOUT_MS = 7000;
-	var WORK_FROM = 10, WORK_TO = 23;
+  var SITE = "https://misty-yak-1997.a.tuna.free";
+  var CHECK_EVERY_MS = 15000;
+  var PROBE_TIMEOUT_MS = 6000;
 
-	var dot = document.getElementById("dot");
-	var statusText = document.getElementById("status-text");
-	var offlineBlock = document.getElementById("offline-block");
-	var note = document.getElementById("irkutsk-note");
-	document.getElementById("open-link").href = SITE;
+  var dot = document.getElementById("dot");
+  var statusText = document.getElementById("status-text");
+  var statusHint = document.getElementById("status-hint");
+  var openLink = document.getElementById("open-link");
+  openLink.href = SITE;
 
-	function irkutskNote() {
-		var hour, minute;
-		try {
-			var parts = new Intl.DateTimeFormat("ru-RU", { timeZone: "Asia/Irkutsk", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
-			hour = parseInt(parts.find(function (p) { return p.type === "hour"; }).value, 10) % 24;
-			minute = parts.find(function (p) { return p.type === "minute"; }).value;
-		} catch (e) { return ""; }
-		var time = (hour < 10 ? "0" : "") + hour + ":" + minute;
-		var inside = hour >= WORK_FROM && hour < WORK_TO;
-		return "Сейчас в Иркутске " + time + ". " + (inside
-			? "По графику сервер должен работать, напиши мне, и я его запущу."
-			: "Сейчас вне графика, сайт заработает после " + WORK_FROM + ":00 по Иркутску.");
-	}
+  function probe() {
+    var img = new Image();
+    var done = false;
+    var timer = setTimeout(function() {
+      if (!done) {
+        done = true;
+        setOffline();
+      }
+    }, PROBE_TIMEOUT_MS);
 
-	function setState(kind, text) {
-		dot.className = "dot " + kind;
-		statusText.textContent = text;
-		offlineBlock.hidden = kind !== "off";
-		if (kind === "off") note.textContent = irkutskNote();
-	}
+    img.onload = function() {
+      if (!done) {
+        done = true;
+        clearTimeout(timer);
+        setOnline();
+      }
+    };
+    img.onerror = function() {
+      if (!done) {
+        done = true;
+        clearTimeout(timer);
+        setOffline();
+      }
+    };
+    img.src = SITE + "/static/ping.png?_=" + Date.now();
+  }
 
-	// Проверка через картинку: она грузится с другого домена без CORS. Если сервер выключен, туннель отдаёт страницу ошибки, а не картинку
-	function probe() {
-		return new Promise(function (resolve) {
-			var img = new Image();
-			var done = false;
-			function finish(ok) { if (!done) { done = true; img.onload = img.onerror = null; resolve(ok); } }
-			img.onload = function () { finish(true); };
-			img.onerror = function () { finish(false); };
-			setTimeout(function () { finish(false); }, PROBE_TIMEOUT_MS);
-			img.src = SITE + "/static/ping.png?t=" + Date.now();
-		});
-	}
+  function setOnline() {
+    dot.className = "dot on";
+    statusText.textContent = "Сервер онлайн! Студия готова к работе";
+    statusHint.textContent = "Нажмите «Войти в Студию» для запуска";
+    openLink.style.display = "inline-flex";
+  }
 
-	function check() {
-		probe().then(function (ok) {
-			if (ok) {
-				setState("on", "Сервер работает. Открываю сайт...");
-				window.location.href = SITE;
-			} else {
-				setState("off", "Сервер сейчас выключен");
-				setTimeout(check, CHECK_EVERY_MS);
-			}
-		});
-	}
-	check();
+  function setOffline() {
+    dot.className = "dot off";
+    statusText.textContent = "Сервер сейчас отдыхает";
+    statusHint.textContent = "Напишите в TG @now_know223 для запуска";
+  }
+
+  probe();
+  setInterval(probe, CHECK_EVERY_MS);
 </script>
 </body>
 </html>
